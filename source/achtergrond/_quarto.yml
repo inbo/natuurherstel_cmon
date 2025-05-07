@@ -1,0 +1,67 @@
+project:
+  post-render: _extensions/inbo/flandersqmd-book/filters/rename.R
+  type: book
+  preview:
+    port: 4201
+    browser: true
+  render:
+  - '*.md'
+  - '*.qmd'
+  - '!LICENSE.md'
+  - '!README.md'
+  output-dir: ../../output
+execute:
+  echo: false
+  freeze: auto
+lang: nl-BE
+format:
+  flandersqmd-book-html: default
+  flandersqmd-book-pdf: default
+bibliography: referenties.bib
+flandersqmd:
+  entity: INBO
+  level: 2
+  title: Kleinste detecteerbare trend per landgebruik voor C-MON
+  shorttitle: onkelinx_2025_cmon
+  author:
+  - name:
+      given: Thierry
+      family: Onkelinx
+    email: thierry.onkelinx@inbo.be
+    corresponding: true
+    orcid: 0000-0001-8804-4216
+    affiliation:
+    - Research Institute for Nature and Forest (INBO)
+  reviewer:
+  - name:
+      given: Bruno
+      family: De Vos
+    email: bruno.devos@inbo.be
+    orcid: 0000-0001-9523-3453
+    affiliation:
+    - Instituut voor Natuur- en Bosonderzoek (INBO)
+  year: 2025
+  public_report: false
+  colophon: false
+  floatbarrier: section
+book:
+  downloads: pdf
+  open-graph: true
+  sidebar:
+    logo: media/cover.png
+  body-footer: '{{< footer >}}'
+  chapters:
+  - index.md
+#  - abstract.md
+#  - inleiding.md
+  - analyse.qmd
+  - theorie.md
+  - effect.qmd
+  - referenties.md
+  navbar:
+    right:
+    - icon: mastodon
+      href: https://mastodon.online/@inbo
+    - icon: facebook
+      href: https://www.facebook.com/INBOVlaanderen/
+    pinned: true

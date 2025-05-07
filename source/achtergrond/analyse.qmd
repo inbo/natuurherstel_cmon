@@ -1,0 +1,73 @@
+# Inschatten van de varianties {#sec-analyse}
+
+```{r setup}
+#| include: false
+library(glmmTMB)
+library(kableExtra)
+library(knitr)
+library(lubridate)
+library(readxl)
+library(tidyverse)
+```
+
+```{r read-data}
+#| include: false
+#| warning: false
+read_xlsx("../../data/cmon_voorraden_20240724.xlsx", sheet = "volledig") |>
+  select(
+    location = "Bodemlocaties_Naam", date = "Bodemlocaties_Datum",
+    landuse = "Landgebruikscategorie Cmon", stock = "OrgC voorraad_0_30"
+  ) |>
+  filter(!is.na(.data$stock)) |>
+  mutate(
+    landuse2 = ifelse(
+      str_detect(.data$landuse, "Ruimtebeslag"), "Ruimtebeslag", .data$landuse
+    )
+  ) -> organic_stock_0_30
+```
+
+Op basis van de reeds beschikbare gegevens uit Cmon kunnen we de varianties van de verschillende landgebruiken inschatten.
+In @tbl-stalen geven we het aantal momenteel beschikbare stalen per landgebruik met informatie over totale koolstofvoorraad in de laag 0-30 cm.
+Hierbij hebben we de verschillende categorieën van "Ruimtebeslag" samengevoegd tot één categorie.
+
+```{r tbl-stalen}
+#| tbl-cap: "Aantal stalen per landgebruik."
+organic_stock_0_30 |>
+  count(landgebruik = .data$landuse2, name = "stalen") |>
+  kable()
+```
+
+Om de variantie in te schatten veronderstellen we dat de koolstofvoorraad een log-normale verdeling volgt waarbij zowel het gemiddelde als de variantie afhankelijk zijn van het landgebruik.
+Aangezien we momenteel nog te weinig herhaalde metingen hebben, kunnen we nog geen goede inschatting maken van de variantie te wijten naar de meetfout.
+De analyse levert ons enkel een schatting van de totale variantie per landgebruik.
+Dit is de combinatie van de variantie tussen locaties van een zelfde landgebruik als de meetvariantie.
+Volgens @Sleutel2020 de totale variantie bij akkers voor de helft te wijten aan de meetvariantie.
+Daarnaast veronderstellen we dat de meetvariantie louter afhankt van de staalname en daarom dezelfde is bij alle landgebruiken.
+De varantie tussen de locaties van het landgebruik schatten we daarom door de totale variantie te verminderen met de helft van de meetvariantie [@tbl-variantie].
+Merk op dat de varianties is @tbl-variantie de varianties zijn van de log-normale verdeling en uitgedrukt zijn in de log-schaal.
+
+```{r tbl-variantie}
+#| tbl-cap: "Variantiecomponenten per landgebruik.
+#|   De meetvariantie is de variantie van de herhaalde metingen,
+#|   de landgebruikvariantie is de variantie van de landgebruiken.
+#|   We onderstellen dat de meetvariantie gelijk is voor alle landgebruiken.
+#|   En dat bij akkers de totale variantie voor de helft uit de meetvariantie
+#|   bestaat."
+glmmTMB(
+  stock ~ 0 + landuse2 + diag(0 + landuse2 | location),
+  data = organic_stock_0_30, family = lognormal(link = "log")
+) |>
+  summary() -> m
+landuse_var <- diag(m$varcor$cond$location)
+
+tibble(
+  landgebruik = gsub("landuse2", "", names(landuse_var)),
+  `totale variantie` = signif(landuse_var, 2)
+) |>
+  mutate(
+    meetvariantie = signif(landuse_var[["landuse2Akker"]] / 2, 2),
+    landgebruikvariantie = .data$`totale variantie` - .data$meetvariantie
+  ) -> landuse_var
+kable(landuse_var, booktabs = TRUE) |>
+  kable_styling(full_width = FALSE)
+```

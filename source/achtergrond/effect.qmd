@@ -1,0 +1,328 @@
+# Inschatten kleinste detecteerbare trend en interpretatie {#sec-effect}
+
+```{r setup}
+#| include: false
+library(duckdb)
+library(effectclass)
+library(INBOtheme)
+library(kableExtra)
+library(knitr)
+library(tidyverse)
+conflicted::conflicts_prefer(dplyr::filter)
+connection = dbConnect(
+  duckdb(), dbdir = "../../data/power_cmon.duckdb", read_only = TRUE
+)
+alpha <- 0.1
+power <- 0.9
+threshold <- log(1.004)
+```
+
+## Kleinste detecteerbare trend
+
+Op basis van de analyse uit @sec-analyse en het Cmon design leggen we in @tbl-parameters de designparameters vast waarvoor we de kleinste detecteerbare trend willen inschatten.
+In @tbl-jaarlijks geven we de kleinste detecteerbare jaarlijkse trend per landgebruik en voor verschillende looptijden.
+Merk op dat Cmon is ontworpen om de locaties elke tien jaar opnieuw te bezoeken.
+Met een looptijd van 6 jaar hebben we dus geen herhaalde metingen.
+Met als gevolg dat we enkel zeer sterke trends kunnen vaststellen.
+Met een looptijd van 12 jaar hebben we slechts 20% van de locaties herhaald gemeten.
+Hoewel we hier reeds kleinere trends kunnen vaststellen, ze zijn nog steeds vrij groot vergelijkbaar met de trends die we na 20 jaar kunnen vaststellen.
+
+```{r tbl-parameters}
+#| tbl-cap: "Designparameters per landgebruik voor de schatting van de kleinste
+#|   detecteerbare trend."
+parameters <- data.frame(
+  landgebruik = c("bos", "natuur", "akker", "grasland", "ruimtebeslag"),
+  log_sd_location = c(0.36, 0.58, 0.21, 0.21, 0.32),
+  log_sd_error = 0.21, n_sample = c(490, 446, 794, 406, 458)
+) |>
+  filter(.data$landgebruik %in% c("bos", "natuur"))
+parameters |>
+  `rownames<-`(parameters$landgebruik) |>
+  mutate(across(everything(), ~ as.character(.x))) |>
+  select(
+    "standaard afwijking locaties" = "log_sd_location",
+    "standaard afwijking ruis" = "log_sd_error", steeproefgrootte = "n_sample"
+  ) |>
+  t() |>
+  as.data.frame() |>
+  kable() |>
+  kable_styling(full_width = FALSE)
+```
+
+```{r functions}
+estimate_trend <- function(
+  duration, n_sample, log_sd_location, log_sd_error, initial = 87.8,
+  alpha = 0.1, power = 0.9, connection
+) {
+  query <- sprintf(
+    "SELECT trend, SUM(p < %f) AS significant, COUNT(trend) AS sims
+FROM trend
+WHERE
+  ABS(log_sd_location - %f) < 1e-4 AND ABS(log_sd_error - %f) < 1e-4 AND
+    n_sample = %i AND duration = %i AND ABS(initial - %f) < 1e-4
+GROUP BY trend
+ORDER BY trend",
+    alpha, log_sd_location, log_sd_error, n_sample, duration, initial
+  )
+  sims <- dbGetQuery(conn = connection, statement = query)
+  if (nrow(sims) == 0) {
+    return(NA)
+  }
+  sims |>
+    mutate(
+      not = .data$sims - .data$significant
+    ) |>
+    glm(formula = cbind(significant, not) ~ trend, family = binomial) -> model
+  new_data <- data.frame(trend = seq(0.0001, max(sims$trend), by = 0.0001))
+  new_data |>
+    predict(object = model, se.fit = TRUE) -> preds
+  new_data |>
+    mutate(
+      fit = plogis(preds$fit),
+      lcl = qnorm(0.025, preds$fit, preds$se.fit) |>
+        plogis(),
+      ucl = qnorm(0.975, preds$fit, preds$se.fit) |>
+        plogis()
+    ) -> new_data
+  return(min(new_data$trend[new_data$fit >= power]))
+}
+```
+
+```{r tbl-jaarlijks}
+#| tbl-cap: "Kleinste detectbare jaarlijkse trend per landgebruik."
+#| warning: false
+parameters |>
+  inner_join(
+    expand_grid(
+      landgebruik = parameters$landgebruik, looptijd = c(6, 12, 18, 20, 24, 30)
+    ),
+    by = "landgebruik"
+  ) |>
+  mutate(
+    effect = pmap_dbl(
+      list(
+        .data$looptijd, .data$n_sample, .data$log_sd_location,
+        .data$log_sd_error
+      ),
+      ~estimate_trend(
+        duration = ..1, n_sample = ..2, log_sd_location = ..3, power = power,
+        log_sd_error = ..4, connection = connection, alpha = alpha
+      )
+    )
+  ) -> effect
+effect |>
+  transmute(
+    .data$landgebruik, .data$looptijd,
+    effect = sprintf("%.2f%%", .data$effect * 100)
+  ) |>
+  pivot_wider(names_from = "landgebruik", values_from = "effect") |>
+  kable(align = "rr") |>
+  kable_styling(full_width = FALSE)
+```
+
+Om de jaarlijkse trends uit @tbl-jaarlijks in perspectief te zetten, drukken we ze in @tbl-looptijd uit als de cummulatieve wijzingen over de looptijd.
+De correcte wijze om deze deze cummulatieve wijziging $p_c$ te berekenen is door de jaarlijkse wijziging $p_j$ te verhogen met 1 en deze tot de macht van de looptijd $t$ te verheffen @eq-cummulatieve-wijziging.
+Wanneer we $t$ jaren meten, dan is er een verschil van $t -1$ jaren tussen het eerste en laatste jaar.
+
+$$1 + p_c = (1+p_j) ^ {t - 1}$$ {#eq-cummulatieve-wijziging}
+
+```{r tbl-looptijd}
+#| tbl-cap: "Kleinste detectbare cummalutieve wijziging per landgebruik over de
+#|   looptijd."
+effect |>
+  transmute(
+    .data$landgebruik, .data$looptijd,
+    effect = sprintf(
+      "%.1f%%", exp(log(1 + .data$effect) * (.data$looptijd - 1)) * 100 - 100
+    )
+  ) |>
+  pivot_wider(names_from = "landgebruik", values_from = "effect") |>
+  kable(align = "rr") |>
+  kable_styling(full_width = FALSE)
+```
+
+## Interpretatie van de meetnetresultaten
+
+### Concept
+
+Om de interpretatie makkelijker te maken, delen we de wijzigingen op in tien klassen door hun 90% interval te vergelijken met een referentie, ondergrens en bovengrens.
+Een effect is significant wanneer de referentie buiten het 90% interval ligt.
+We spreken over een **toename** (**afname**) als het interval volledig boven (onder) de referentie ligt.
+Niet significante effect is ook informatief wanneer het bijhorende interval voldoende smal is.
+Bijvoorbeeld als het interval volledig tussen de ondergrens en bovengrens ligt.
+In dat geval kunnen we stellen dat het effect niet significant en klein is, het immers zeker minder sterk dan de ondergrens en minder sterk dan de bovengrens.
+Dergelijk effect krijgt de naam **stabiel**.
+Heeft het effect een breed interval dat zowel de boven- als ondergrens bevat, spreken we over een **onduidelijk** effect.
+Daarnaast is er nog de mogelijkheid dat het interval zowel de bovengrens (ondergrens) als de referentie bevat maar niet de ondergrens (bovengrens).
+Dan spreken we over een **mogelijke toename** (**mogelijke afname**).
+We kunnen de boven- en ondergrens eveneens gebruiken om een verder onderscheid te maken binnen de significante effecten.
+Een interval volledig boven (onder) de bovengrens (ondergrens) wordt dan een **sterke toename** (**sterke afname**).
+Een interval volledig tussen de referentie en de de bovengrens (ondergrens) wordt dan een **matige toename** (**matige afname**).
+Een interval dat de referentie niet bevat maar wel de bovengrens (ondergrens) blijft een **toename** (**afname**).
+Merk op dat de indeling volledig gebaseerd is op de onzekerheid rond het effect en niet op de puntschatting van het effect zelf.
+We vatten de opdeling met bijhorende afkortingen en regels samen in tabel @tbl-regels.
+@fig-trendklasse geeft een grafische voorstelling waarbij we de afkortingen in combinatie met aangepaste symbolen gebruiken.
+De afkortingen zelf zijn te fijn om als symbool te gebruiken.
+
+```{r tbl-regels}
+#| tbl-cap: "Overzicht van de benamingen van de tien effectklassen met hun
+#|   afkorting en de regels.
+#|   $R$: referentie, $L$: ondergrens, $B$: bovengrens, $l$: ondergrens van het
+#|   90% interval, $b$: bovengrens van het 90% interval. $L < R < B$ en $l < b$.
+#|   "
+tribble(
+  ~ benaming, ~afkorting, ~regels,
+  "sterke toename",    "`++`", "$B < l$",
+  "toename",           "`+`",  "$R < l < B$ en $B < b$",
+  "matige toename",    "`+~`", "$R < l < B$ en $b < B$",
+  "stabiel",           "`~`",  "$L < l < R$ en $R < b < B$",
+  "matige afname",     "`-~`", "$L < l < R$ en $b < R$",
+  "afname",            "`-`",  "$l < L$ en $L < b < R$",
+  "sterke afname",     "`--`", "$l < L$",
+  "mogelijke toename", "`?+`", "$L < l < R$ en $B < b$",
+  "mogelijke afname",  "`?-`", "$l < L$ en $R < b < B$",
+  "onduidelijk",       "`?`",  "$l < L$ en $B < b$"
+) |>
+  kable() |>
+  kable_styling(full_width = FALSE)
+```
+
+```{r fig-trendklasse}
+#| fig.cap: Voorbeeld van de tien mogelijke interpretaties van een effect door
+#|   het 90% interval te vergelijken met een referentie, ondergrens en
+#|   bovengrens.
+tribble(
+  ~x, ~y, "stabiel", 0, "toename", 1, "afname", -1, "sterke\ntoename", 1.5,
+  "sterke\nafname", -1.5, "matige\ntoename",  0.5, "matige\nafname", -0.5,
+  "mogelijke\ntoename", 0.5, "mogelijke\nafname", -0.5, "onduidelijk", 0
+) |>
+  mutate(
+    s = c(rep(0.25, 7), 0.5, 0.5, 1.1), lcl = qnorm(0.05, .data$y, .data$s),
+    ucl = qnorm(0.95, .data$y, .data$s),
+    klasse = classification(.data$lcl, .data$ucl, 1)
+  ) |>
+  arrange(.data$klasse) |>
+  mutate(
+    x = factor(.data$x, levels = rev(.data$x)), x_int = as.integer(.data$x),
+    tekst = format_ci(.data$y, lcl = .data$lcl, ucl = .data$ucl) |>
+      sprintf(fmt = "%s\n%s (%s)", .data$x, .data$klasse)
+  ) |>
+  ggplot(aes(x = x_int, y = y, ymin = lcl, ymax = ucl, link_sd = s)) +
+  annotate(
+    geom = "rect", xmin = -Inf, xmax = Inf, ymin = -1,
+    ymax = 1, alpha = 0.5, fill = inbo_grijs
+  ) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  stat_fan(geom = "rect") +
+  scale_x_continuous(breaks = effect$x_int, labels = effect$x) +
+  scale_y_continuous(
+    "trend", breaks = c(-1, 0, 1),
+    labels = c("ondergrens", "referentie", "bovengrens")
+  ) +
+  coord_flip() +
+  theme(axis.title.y = element_blank())
+```
+
+Uiteraard hangt de opdeling sterk af van de keuze van de boven- en ondergrens en de referentie.
+Een trend van 0% is een logische keuze als referentie.
+Als bovengrens stellen we 0.4% per jaar voor aangezien dit de trend is waarvoor Cmon ontworpen is.
+Als ondergrens stellen we het complement van 0.4% per jaar voor (-0.398%) voor.
+
+### Mogelijke uitspraken
+
+Op basis van de kleinste detecteerbare jaarlijkse wijziging uit @tbl-jaarlijks, kunnen we een inschatting maken van de mogelijke uitspraken die we kunnen doen op basis van de metingen volgens de regels in @tbl-regels.
+In @fig-interpretatie geven we de mogelijke uitspraken weer voor de verschillende landgebruiken en looptijden.
+Merk op dat we bij korte looptijden enkel zeer sterke trends kunnen vaststellen.
+Bij kleine trends zijn de onzekerheden te groot om een uitspraak te doen.
+Eens de looptijd 18 jaar is, kunnen we meer genuanceerde uitspraken doen.
+Is de geobserveerde trend in de buurt van 0% per jaar, kunnen we stellen dat de trend stabiel is.
+Ter herinnering, met een stabiele trend bedoelen we dat de trend met voldoende zekerheid minder sterk is dan 0.4% per jaar en meer dan -0.4% per jaar.
+In een aantal gevallen kunnen we enkel stellen dat er een mogelijk toename of afname is.
+Vanaf een looptijd van 20 jaar kunnen we steeds een uitspraak doen.
+
+```{r fig-interpretatie}
+#| fig.cap: "Mogelijk interpretaties van de waargenomen jaarlijkse wijziging
+#|  in functie van het landgebruik en de looptijd."
+#| warning: false
+effect |>
+  mutate(
+    se = .data$effect / (qnorm(power) + qnorm(1 - alpha / 2)),
+    limits = map(
+        .data$se,
+        ~interpretation_intervals(
+          .x, threshold = threshold, reference = 0, prob = 0.9
+        )
+      )
+  ) |>
+  transmute(
+    .data$landgebruik, .data$looptijd,
+    intervals = map(
+      .data$limits,
+      ~data.frame(
+        label = .x$labels, lcl = head(.x$breaks, -1), ucl = tail(.x$breaks, -1)
+      )
+    )
+  ) |>
+  unnest("intervals") -> interpretatie
+ggplot(
+  interpretatie,
+  aes(
+    ymin = lcl, ymax = ucl, xmin = looptijd - 1, xmax = looptijd + 1,
+    fill = label
+  )
+) +
+  annotate(
+    geom = "rect", xmin = -Inf, xmax = Inf, ymin = -threshold,
+    ymax = threshold, alpha = 0.5, fill = inbo_grijs
+  ) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_rect() +
+  scale_y_continuous(
+    "waargenomen jaarlijkse trend", labels = change_labels,
+    breaks = change_breaks(n = 5, extra = c(-1, 1) * threshold)
+  ) +
+  scale_x_continuous(
+    "looptijd (jaren)", breaks = unique(interpretatie$looptijd)
+  ) +
+  scale_effect("interpretatie", labels = class_labels(lang = "nl")) +
+  facet_wrap(~landgebruik)
+```
+
+```{r fig-interpretatie-detail}
+#| fig.cap: "Detailleerde weergaven van de mogelijk interpretaties van de
+#|  waargenomen jaarlijkse wijziging in functie van het landgebruik en de
+#|  looptijd."
+#| warning: false
+interpretatie |>
+  filter(
+    abs(.data$lcl) < 2 * threshold | abs(.data$ucl) < 2 * threshold |
+      .data$label == "?"
+  ) |>
+  group_by(.data$landgebruik, .data$looptijd) |>
+  mutate(
+    lcl = ifelse(.data$lcl == min(.data$lcl), -Inf, .data$lcl),
+    ucl = ifelse(.data$ucl == max(.data$ucl), Inf, .data$ucl)
+  ) |>
+  ggplot(
+    aes(
+      ymin = lcl, ymax = ucl, xmin = looptijd - 1, xmax = looptijd + 1,
+      fill = label
+    )
+  ) +
+  annotate(
+    geom = "rect", xmin = -Inf, xmax = Inf, ymin = -threshold,
+    ymax = threshold, alpha = 0.5, fill = inbo_grijs
+  ) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_rect() +
+  scale_y_continuous(
+    "waargenomen jaarlijkse trend", labels = change_labels,
+    breaks = change_breaks(n = 4, extra = c(-1, 1) * threshold)
+  ) +
+  scale_x_continuous(
+    "looptijd (jaren)", unique(interpretatie$looptijd)
+  ) +
+  scale_effect("interpretatie", labels = class_labels(lang = "nl")) +
+  facet_wrap(~landgebruik)
+```
+
