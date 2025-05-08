@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using these metadata.
+title: "Sample size for carbon stocks in forests"
+authors:
+- given-names: Thierry
+  family-names: Onkelinx
+  affiliation: Research Institute for Nature and Forest (INBO)
+  orcid: 0000-0001-8804-4216
+keywords:
+- Cmon
+contact:
+- given-names: Thierry
+  family-names: Onkelinx
+  affiliation: Research Institute for Nature and Forest (INBO)
+  orcid: 0000-0001-8804-4216
+doi: ~
+license: CC-BY-4.0
+repository-code: https://github.com/inbo/natuurherstel_cmon/
+type: software
+abstract: "This repository contains the code to estimate the smallest detectable trend
+  for the Cmon monitoring scheme."

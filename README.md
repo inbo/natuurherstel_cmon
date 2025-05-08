@@ -20,9 +20,5 @@ Research Institute for Nature and Forest (INBO)[^cph][^fnd]
 <!-- community: inbo -->
 
 <!-- description: start -->
-Replace this with a short description of the project.
-It becomes the abstract of the project in the citation information.
-And the project description at https://zenodo.org
+This repository contains the code to estimate the smallest detectable trend for the Cmon monitoring scheme.
 <!-- description: end -->
-
-Anything below here is visible in the README but not in the citation.

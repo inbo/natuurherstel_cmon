@@ -21,7 +21,7 @@ bibliography: referenties.bib
 flandersqmd:
   entity: INBO
   level: 2
-  title: Kleinste detecteerbare trend per landgebruik voor C-MON
+  title: Kleinste detecteerbare trend per landgebruik voor Cmon
   shorttitle: onkelinx_2025_cmon
   author:
   - name:
@@ -61,7 +61,7 @@ book:
   navbar:
     right:
     - icon: mastodon
-      href: https://mastodon.online/@inbo
+      href: https://mastodon.online/&#64; inbo
     - icon: facebook
       href: https://www.facebook.com/INBOVlaanderen/
     pinned: true
