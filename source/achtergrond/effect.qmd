@@ -9,7 +9,7 @@ library(kableExtra)
 library(knitr)
 library(tidyverse)
 conflicted::conflicts_prefer(dplyr::filter)
-connection = dbConnect(
+connection <- dbConnect(
   duckdb(), dbdir = "../../data/power_cmon.duckdb", read_only = TRUE
 )
 alpha <- 0.1
@@ -54,6 +54,7 @@ estimate_trend <- function(
   duration, n_sample, log_sd_location, log_sd_error, initial = 87.8,
   alpha = 0.1, power = 0.9, connection
 ) {
+  stopifnot(require("dplyr", quietly = TRUE), require("DBI", quietly = TRUE))
   query <- sprintf(
     "SELECT trend, SUM(p < %f) AS significant, COUNT(trend) AS sims
 FROM trend
@@ -248,11 +249,11 @@ effect |>
   mutate(
     se = .data$effect / (qnorm(power) + qnorm(1 - alpha / 2)),
     limits = map(
-        .data$se,
-        ~interpretation_intervals(
-          .x, threshold = threshold, reference = 0, prob = 0.9
-        )
+      .data$se,
+      ~interpretation_intervals(
+        .x, threshold = threshold, reference = 0, prob = 0.9
       )
+    )
   ) |>
   transmute(
     .data$landgebruik, .data$looptijd,

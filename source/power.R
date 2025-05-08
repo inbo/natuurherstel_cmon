@@ -2,7 +2,7 @@ sim_linear <- function(
   trend = 0.004, duration = 12, n_sample = 490, initial = 87.8,
   log_sd_location = 0.21, log_sd_error = 0.21
 ) {
-  stopifnot(require(glmmTMB), require(tidyverse))
+  stopifnot(require("dplyr"), require("glmmTMB"))
   n_cycle <- ceiling(duration / 10)
   if (n_cycle > 1) {
     formula <- measurement ~ year + (1 | location)
@@ -41,7 +41,7 @@ sim_change <- function(
   trend = 0.004, n_period = 2, duration = 6, n_sample = 490, initial = 87.8,
   log_sd_location = 0.21, log_sd_error = 0.21
 ) {
-  stopifnot(require(glmmTMB), require(tidyverse), n_period >= 2)
+  stopifnot(require("glmmTMB"), require("tidyverse"), n_period >= 2)
   n_cycle <- ceiling(duration * n_period / 10)
   if (n_cycle > 1) {
     formula <- measurement ~ period + (1 | location)
@@ -86,7 +86,11 @@ estimate_trend <- function(
     duckdb::duckdb(), dbdir = "data/power_cmon.duckdb", read_only = FALSE
   )
 ) {
-  stopifnot(require(assertthat), require(duckdb), require(tidyverse))
+  stopifnot(
+    require("assertthat"), require("DBI"), require("dplyr"), require("duckdb"),
+    require("ggplot2"), require("purrr"), require("tidyr")
+  )
+  conflicted::conflicts_prefer(dplyr::filter)
   assert_that(
     is.count(duration), is.count(n_sample), is.number(initial),
     is.number(log_sd_location), noNA(log_sd_location), log_sd_location > 0,
@@ -95,7 +99,6 @@ estimate_trend <- function(
     is.number(power), noNA(power), power > 0, power < 1
   )
   if (!"trend" %in% dbListTables(conn = connection)) {
-    #   dbRemoveTable(conn = connection, name = "trend")
     data.frame(
       trend = numeric(0), duration = integer(0), n_sample = integer(0),
       initial = numeric(0), log_sd_location = numeric(0),
@@ -240,7 +243,7 @@ ORDER BY trend",
         ucl = map_dbl(.data$lcl, ~ .x[2]),
         lcl = map_dbl(.data$lcl, ~ .x[1])
       ) |>
-      ggplot(aes(x = trend, ymin = lcl, ymax = ucl)) +
+      ggplot(aes(x = .data$trend, ymin = .data$lcl, ymax = .data$ucl)) +
       geom_hline(yintercept = power, linetype = 2) +
       geom_rect(
         xmin = min(candidate$trend[candidate$ucl >= power]),
@@ -252,9 +255,9 @@ ORDER BY trend",
         linetype = 2
       ) +
       geom_errorbar() +
-      geom_point(aes(size = sims, y = simpower), alpha = 0.2) +
+      geom_point(aes(size = .data$sims, y = .data$simpower), alpha = 0.2) +
       geom_ribbon(data = candidate, alpha = 0.1, fill = "blue") +
-      geom_line(data = candidate, aes(y = fit), colour = "blue") +
+      geom_line(data = candidate, aes(y = .data$fit), colour = "blue") +
       scale_y_continuous("power", limits = c(0, 1)) +
       scale_size_continuous(limits = c(0, NA))
     print(p)
@@ -295,7 +298,7 @@ ORDER BY trend",
       ucl = map_dbl(.data$lcl, ~ .x[2]),
       lcl = map_dbl(.data$lcl, ~ .x[1])
     ) |>
-    ggplot(aes(x = trend, ymin = lcl, ymax = ucl)) +
+    ggplot(aes(x = .data$trend, ymin = .data$lcl, ymax = .data$ucl)) +
     geom_hline(yintercept = power, linetype = 2) +
     geom_rect(
       xmin = min(new_data$trend[new_data$ucl >= power]),
@@ -307,9 +310,9 @@ ORDER BY trend",
       linetype = 2
     ) +
     geom_errorbar() +
-    geom_point(aes(size = sims, y = simpower), alpha = 0.2) +
+    geom_point(aes(size = .data$sims, y = .data$simpower), alpha = 0.2) +
     geom_ribbon(data = new_data, alpha = 0.1, fill = "blue") +
-    geom_line(data = new_data, aes(y = fit), colour = "blue") +
+    geom_line(data = new_data, aes(y = .data$fit), colour = "blue") +
     scale_y_continuous("power", limits = c(0, 1)) +
     scale_size_continuous(limits = c(0, NA))
   print(p)
@@ -329,7 +332,8 @@ estimate_average <- function(
     duckdb::duckdb(), dbdir = "data/power_cmon.duckdb", read_only = FALSE
   )
 ) {
-  stopifnot(require(assertthat), require(duckdb), require(tidyverse))
+  stopifnot(require("assertthat"), require("duckdb"), require("tidyverse"))
+  conflicted::conflicts_prefer(dplyr::filter)
   assert_that(
     is.count(n_period), n_period >= 2, is.count(duration), is.count(n_sample),
     is.number(initial),
@@ -339,7 +343,6 @@ estimate_average <- function(
     is.number(power), noNA(power), power > 0, power < 1
   )
   if (!"average" %in% dbListTables(conn = connection)) {
-    #   dbRemoveTable(conn = connection, name = "average")
     data.frame(
       trend = numeric(0), duration = integer(0), n_sample = integer(0),
       initial = numeric(0), log_sd_location = numeric(0), n_period = integer(0),
@@ -482,7 +485,7 @@ ORDER BY trend",
         ucl = map_dbl(.data$lcl, ~ .x[2]),
         lcl = map_dbl(.data$lcl, ~ .x[1])
       ) |>
-      ggplot(aes(x = trend, ymin = lcl, ymax = ucl)) +
+      ggplot(aes(x = .data$trend, ymin = .data$lcl, ymax = .data$ucl)) +
       geom_hline(yintercept = power, linetype = 2) +
       geom_rect(
         xmin = min(candidate$trend[candidate$ucl >= power]),
@@ -494,9 +497,9 @@ ORDER BY trend",
         linetype = 2
       ) +
       geom_errorbar() +
-      geom_point(aes(size = sims, y = simpower)) +
+      geom_point(aes(size = .data$sims, y = .data$simpower)) +
       geom_ribbon(data = candidate, alpha = 0.1, fill = "blue") +
-      geom_line(data = candidate, aes(y = fit), colour = "blue") +
+      geom_line(data = candidate, aes(y = .data$fit), colour = "blue") +
       scale_y_continuous("power", limits = c(0, 1)) +
       scale_size_continuous(limits = c(0, NA))
     print(p)
@@ -534,7 +537,7 @@ ORDER BY trend",
       ucl = map_dbl(.data$lcl, ~ .x[2]),
       lcl = map_dbl(.data$lcl, ~ .x[1])
     ) |>
-    ggplot(aes(x = trend, ymin = lcl, ymax = ucl)) +
+    ggplot(aes(x = .data$trend, ymin = .data$lcl, ymax = .data$ucl)) +
     geom_hline(yintercept = power, linetype = 2) +
     geom_rect(
       xmin = min(new_data$trend[new_data$ucl >= power]),
@@ -546,9 +549,9 @@ ORDER BY trend",
       linetype = 2
     ) +
     geom_errorbar() +
-    geom_point(aes(size = sims, y = simpower)) +
+    geom_point(aes(size = .data$sims, y = .data$simpower)) +
     geom_ribbon(data = new_data, alpha = 0.1, fill = "blue") +
-    geom_line(data = new_data, aes(y = fit), colour = "blue") +
+    geom_line(data = new_data, aes(y = .data$fit), colour = "blue") +
     scale_y_continuous("power", limits = c(0, 1)) +
     scale_size_continuous(limits = c(0, NA))
   print(p)
@@ -562,8 +565,6 @@ ORDER BY trend",
 }
 
 # var bos: 0.17
-# log_sd_location: sqrt(0.17 - 0.085 / 2) = 0.36
-# log_sd_error = sqrt(0.085 / 2) = 0.21
 # n_sample: 490
 estimate_trend(
   duration = 6, log_sd_location = 0.36, log_sd_error = 0.21, n_sample = 490
@@ -585,8 +586,6 @@ estimate_trend(
 )
 
 # var natuur: 0.38
-# log_sd_location: sqrt(0.38 - 0.085 / 2) = 0.58
-# log_sd_error = sqrt(0.085 / 2) = 0.21
 # n_sample: 446
 estimate_trend(
   duration = 6, log_sd_location = 0.58, log_sd_error = 0.21, n_sample = 446
@@ -608,8 +607,6 @@ estimate_trend(
 )
 
 # var: akker: 0.085
-# log_sd_location = sqrt(0.085 / 2) = 0.21
-# log_sd_error = sqrt(0.085 / 2) = 0.21
 # n_sample: 794
 estimate_trend(
   duration = 6, log_sd_location = 0.21, log_sd_error = 0.21, n_sample = 794
@@ -631,8 +628,6 @@ estimate_trend(
 )
 
 # var: grasland: 0.085
-# log_sd_location = sqrt(0.085 / 2) = 0.21
-# log_sd_error = sqrt(0.085 / 2) = 0.21
 # n_sample: 406
 estimate_trend(
   duration = 6, log_sd_location = 0.21, log_sd_error = 0.21, n_sample = 406
@@ -654,8 +649,6 @@ estimate_trend(
 )
 
 # var ruimtebeslag: 0.14
-# log_sd_location: sqrt(0.14 - 0.085 / 2) = 0.32
-# log_sd_error = sqrt(0.085 / 2) = 0.21
 # n_sample: 458
 estimate_trend(
   duration = 6, log_sd_location = 0.32, log_sd_error = 0.21, n_sample = 458
