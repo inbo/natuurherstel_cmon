@@ -29,8 +29,8 @@ We kijken tevens naar de trend over de volledige periode van 20 jaar.
 
 Eens we de steekproefgrootte en het bijhorende kleinste detecteerbare effect voor een bepaalde combinatie van kenmerken kennen, kunnen we aan de hand van vuistregels een redelijke schatting maken voor een andere combinatie.
 Deze vuistregels zijn gebaseerd op jaarlijks herhaalde metingen.
-Binnen Cmon is gekozen voor een roterend schema waarbij de locaties elke tien jaar opgenieuw gemeten worden.
-Dat wil zeggen dat we vuistregels met de nodige voorzichtheid moeten gebruiken wanneer we deze toepassen op een looptijd die korter dan twee keer 10 jaar is.
+Binnen Cmon is gekozen voor een roterend schema waarbij de locaties elke tien jaar opnieuw gemeten worden.
+Dat wil zeggen dat we vuistregels met de nodige voorzichtigheid moeten gebruiken wanneer we deze toepassen op een looptijd die korter dan twee keer 10 jaar is.
 
 ### Het kleinste detecteerbare effect is rechtevenredig met de variantie
 
@@ -45,8 +45,8 @@ Wanneer we de steekproefgrootte verviervoudigen, dan halveert het kleinste detec
 Wanneer we de looptijd willen halveren en de detecteerbare jaarlijkse wijziging constant willen houden, dan moeten we de jaarlijkse steekproefgrootte vermenigvuldigen met acht.
 Bij de analyse is het totaal aantal metingen belangrijk, niet het aantal metingen per jaar.
 Halveren we de looptijd, dan moeten we de jaarlijkse steekproefgrootte verdubbelen om hetzelfde totaal aantal metingen te hebben binnen de looptijd.
-Daarnaast is de cummulatieve wijziging over de looptijd ook belangrijk.
-Na de helft van de periode is de cummulatieve wijziging dan ook nog maar half zo groot als over de volledige periode.
+Daarnaast is de cumulatieve wijziging over de looptijd ook belangrijk.
+Na de helft van de periode is de cumulatieve wijziging dan ook nog maar half zo groot als over de volledige periode.
 De vorige vuistregel heeft aan dat we dat moeten compenseren door de jaarlijkse steekproefgrootte te verviervoudigen.
 En aangezien we de jaarlijkse steekproefgrootte als met twee moesten vermenigvuldigen om het totaal op peil te houden, moeten we de jaarlijkse steekproefgrootte met acht vermenigvuldigen.
 

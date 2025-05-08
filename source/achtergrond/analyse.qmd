@@ -42,7 +42,7 @@ Aangezien we momenteel nog te weinig herhaalde metingen hebben, kunnen we nog ge
 De analyse levert ons enkel een schatting van de totale variantie per landgebruik.
 Dit is de combinatie van de variantie tussen locaties van een zelfde landgebruik als de meetvariantie.
 Volgens @Sleutel2020 de totale variantie bij akkers voor de helft te wijten aan de meetvariantie.
-Daarnaast veronderstellen we dat de meetvariantie louter afhankt van de staalname en daarom dezelfde is bij alle landgebruiken.
+Daarnaast veronderstellen we dat de meetvariantie louter afhangt van de staalname en daarom dezelfde is bij alle landgebruiken.
 De varantie tussen de locaties van het landgebruik schatten we daarom door de totale variantie te verminderen met de helft van de meetvariantie [@tbl-variantie].
 Merk op dat de varianties is @tbl-variantie de varianties zijn van de log-normale verdeling en uitgedrukt zijn in de log-schaal.
 

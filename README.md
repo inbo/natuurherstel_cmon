@@ -15,7 +15,7 @@ Research Institute for Nature and Forest (INBO)[^cph][^fnd]
 [^cre]: contact person
 [^inbo.be]: Research Institute for Nature and Forest (INBO)
 
-**keywords**: c-mon
+**keywords**: Cmon
 
 <!-- community: inbo -->
 

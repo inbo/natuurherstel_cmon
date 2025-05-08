@@ -52,8 +52,8 @@ book:
   body-footer: '{{< footer >}}'
   chapters:
   - index.md
-#  - abstract.md
-#  - inleiding.md
+  - abstract.md
+  - inleiding.md
   - analyse.qmd
   - theorie.md
   - effect.qmd

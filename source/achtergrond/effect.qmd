@@ -121,14 +121,14 @@ effect |>
   kable_styling(full_width = FALSE)
 ```
 
-Om de jaarlijkse trends uit @tbl-jaarlijks in perspectief te zetten, drukken we ze in @tbl-looptijd uit als de cummulatieve wijzingen over de looptijd.
-De correcte wijze om deze deze cummulatieve wijziging $p_c$ te berekenen is door de jaarlijkse wijziging $p_j$ te verhogen met 1 en deze tot de macht van de looptijd $t$ te verheffen @eq-cummulatieve-wijziging.
+Om de jaarlijkse trends uit @tbl-jaarlijks in perspectief te zetten, drukken we ze in @tbl-looptijd uit als de cumulatieve wijzigingen over de looptijd.
+De correcte wijze om deze deze cumulatieve wijziging $p_c$ te berekenen is door de jaarlijkse wijziging $p_j$ te verhogen met 1 en deze tot de macht van de looptijd $t$ te verheffen @eq-cumulatieve-wijziging.
 Wanneer we $t$ jaren meten, dan is er een verschil van $t -1$ jaren tussen het eerste en laatste jaar.
 
-$$1 + p_c = (1+p_j) ^ {t - 1}$$ {#eq-cummulatieve-wijziging}
+$$1 + p_c = (1+p_j) ^ {t - 1}$$ {#eq-cumulatieve-wijziging}
 
 ```{r tbl-looptijd}
-#| tbl-cap: "Kleinste detectbare cummalutieve wijziging per landgebruik over de
+#| tbl-cap: "Kleinste detectbare cumalutieve wijziging per landgebruik over de
 #|   looptijd."
 effect |>
   transmute(
