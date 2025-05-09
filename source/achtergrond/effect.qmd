@@ -179,7 +179,7 @@ tribble(
   "stabiel",           "`~`",  "$L < l < R$ en $R < b < B$",
   "matige afname",     "`-~`", "$L < l < R$ en $b < R$",
   "afname",            "`-`",  "$l < L$ en $L < b < R$",
-  "sterke afname",     "`--`", "$l < L$",
+  "sterke afname",     "`--`", "$b < L$",
   "mogelijke toename", "`?+`", "$L < l < R$ en $B < b$",
   "mogelijke afname",  "`?-`", "$l < L$ en $R < b < B$",
   "onduidelijk",       "`?`",  "$l < L$ en $B < b$"
