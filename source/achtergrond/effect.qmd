@@ -15,6 +15,7 @@ connection <- dbConnect(
 alpha <- 0.1
 power <- 0.9
 threshold <- log(1.004)
+theme_set(theme_inbo(base_size = 8))
 ```
 
 ## Kleinste detecteerbare trend
@@ -35,7 +36,7 @@ parameters <- data.frame(
   log_sd_location = c(0.36, 0.58, 0.21, 0.21, 0.32),
   log_sd_error = 0.21, n_sample = c(490, 446, 794, 406, 458)
 ) |>
-  filter(.data$landgebruik %in% c("bos", "natuur"))
+  filter(.data$landgebruik %in% c("bos", "natuur", "akker"))
 parameters |>
   `rownames<-`(parameters$landgebruik) |>
   mutate(across(everything(), ~ as.character(.x))) |>
@@ -184,8 +185,7 @@ tribble(
   "mogelijke afname",  "`?-`", "$l < L$ en $R < b < B$",
   "onduidelijk",       "`?`",  "$l < L$ en $B < b$"
 ) |>
-  kable() |>
-  kable_styling(full_width = FALSE)
+  kable(escape = FALSE, align = "lcc")
 ```
 
 ```{r fig-trendklasse}
@@ -207,15 +207,15 @@ tribble(
     x = factor(.data$x, levels = rev(.data$x)), x_int = as.integer(.data$x),
     tekst = format_ci(.data$y, lcl = .data$lcl, ucl = .data$ucl) |>
       sprintf(fmt = "%s\n%s (%s)", .data$x, .data$klasse)
-  ) |>
-  ggplot(aes(x = x_int, y = y, ymin = lcl, ymax = ucl, link_sd = s)) +
+  ) -> effects
+ggplot(effects, aes(x = x_int, y = y, ymin = lcl, ymax = ucl, link_sd = s)) +
   annotate(
     geom = "rect", xmin = -Inf, xmax = Inf, ymin = -1,
     ymax = 1, alpha = 0.5, fill = inbo_grijs
   ) +
   geom_hline(yintercept = 0, linetype = 2) +
   stat_fan(geom = "rect") +
-  scale_x_continuous(breaks = effect$x_int, labels = effect$x) +
+  scale_x_continuous(breaks = effects$x_int, labels = effects$x) +
   scale_y_continuous(
     "trend", breaks = c(-1, 0, 1),
     labels = c("ondergrens", "referentie", "bovengrens")

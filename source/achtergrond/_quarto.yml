@@ -15,7 +15,7 @@ execute:
   freeze: auto
 lang: nl-BE
 format:
-  flandersqmd-book-html: default
+  # flandersqmd-book-html: default
   flandersqmd-book-pdf: default
 bibliography: referenties.bib
 flandersqmd:
