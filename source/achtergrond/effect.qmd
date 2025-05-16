@@ -36,7 +36,10 @@ parameters <- data.frame(
   log_sd_location = c(0.36, 0.58, 0.21, 0.21, 0.32),
   log_sd_error = 0.21, n_sample = c(490, 446, 794, 406, 458)
 ) |>
-  filter(.data$landgebruik %in% c("bos", "natuur", "akker"))
+  filter(
+    .data$landgebruik %in%
+      c("bos", "natuur", "akker", "grasland", "ruimtebeslag")
+  )
 parameters |>
   `rownames<-`(parameters$landgebruik) |>
   mutate(across(everything(), ~ as.character(.x))) |>
@@ -228,6 +231,9 @@ Uiteraard hangt de opdeling sterk af van de keuze van de boven- en ondergrens en
 Een trend van 0% is een logische keuze als referentie.
 Als bovengrens stellen we 0.4% per jaar voor aangezien dit de trend is waarvoor Cmon ontworpen is.
 Als ondergrens stellen we het complement van 0.4% per jaar voor (-0.398%) voor.
+We ronden dit af naar -0.4% per jaar.
+
+$$\frac{1}{1 + 0.004} = \frac{1}{1.004} = 0.99602 = 1 - 0.00398$$
 
 ### Mogelijke uitspraken
 
